@@ -4,112 +4,98 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.oristool.models.gspn.GSPNSteadyState;
 import org.oristool.models.gspn.GSPNTransient;
 import org.oristool.models.stpn.*;
-import org.oristool.models.stpn.steady.RegSteadyState;
-import org.oristool.models.stpn.trans.RegTransient;
-import org.oristool.models.stpn.trees.DeterministicEnablingState;
 import org.oristool.models.stpn.trees.StochasticTransitionFeature;
 import org.oristool.petrinet.Marking;
 import org.oristool.petrinet.PetriNet;
 import org.oristool.petrinet.Place;
-import org.oristool.petrinet.Transition;
 import org.oristool.util.Pair;
 
+
 public class parallelServerBernsteinPh {
-    public static PetriNet build(Marking marking, int numPlaces, int numPh, int[] arrivalRates, int poolSize) {
-            PetriNet net = new PetriNet();
-            // Generare Pn e An
-            for (int i = 1; i <= numPlaces; i++) {
-               net.addPlace("P" + i);
-                net.addPlace("A" + i);
-            }
-            Place Pool = net.addPlace("Pool");
-            //Generare Phn
-            for (int i = 1; i <= numPh; i++) {
-                net.addPlace("Ph" + i);
-            }
 
-            // Generare Transizioni
-            for (int i = 1; i <= numPh; i++) {
-                net.addTransition("t" + i);
-            }
-            for (int i = 1; i <= numPlaces; i++) {
-                for (int j = 1; j <= numPh; j++) {
-                    net.addTransition("t" + i + j);
-                }
-            }
 
-            //Generare Precondizioni e PostCondizioni  ->Pool
-            for(int i = 1; i<= numPlaces;i++){
-                for(int j = 1; j<= numPh;j++){
-                    //An -> tnk
-                    net.addPrecondition(net.getPlace("A"+i), net.getTransition("t"+i+j));
-                    //An <- tnk
-                    net.addPostcondition(net.getTransition("t"+i+j), net.getPlace("A"+i));
-                    //Pool ->Tnk
-                    net.addPrecondition(Pool, net.getTransition("t"+i+j));
-                    //Tnk -> Phn
-                    net.addPostcondition(net.getTransition("t"+i+j), net.getPlace("Ph" + j));
-                }
-            }
-            //PHn -> tn
-            for(int i = 1; i <= numPh;i++){
-                net.addPrecondition(net.getPlace("Ph"+i), net.getTransition("t"+i));
-            }
-            //Tn -> Ph n+1
-            for(int i = 1; i<numPh; i++)
-            {
-                net.addPostcondition(net.getTransition("t"+ i), net.getPlace("Ph"+ (i+1)));
-            }
-            //Phn -> Pool
-            net.addPostcondition(net.getTransition("t"+ numPh), net.getPlace("Pool"));
 
-            //Generating Properties
-            for(int i = 1; i <= numPlaces; i++)
-            {
-                marking.setTokens(net.getPlace("A"+ i), 1);
-                marking.setTokens(net.getPlace("P"+ i), arrivalRates[i-1]);
-                marking.setTokens(net.getPlace("Ph"+ i), 0);
-            }
-            marking.setTokens(Pool, poolSize);
-            net.getTransition("t1").addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from("1*Ph1", net)));
-            net.getTransition("t11").addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from("0.25*P1", net)));
-            net.getTransition("t12").addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from("0.25*P1", net)));
-            net.getTransition("t13").addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from("0.25*P1", net)));
-            net.getTransition("t14").addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from("0.25*P1", net)));
-            net.getTransition("t2").addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from("2*Ph2", net)));
-            net.getTransition("t21").addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from("0.1*P2", net)));
-            net.getTransition("t22").addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from("0.2*P2", net)));
-            net.getTransition("t23").addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from("0.3*P2", net)));
-            net.getTransition("t24").addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from("0.4*P2", net)));
-            net.getTransition("t3").addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from("3*Ph3", net)));
-            net.getTransition("t31").addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from("0.4*P3", net)));
-            net.getTransition("t32").addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from("0.3*P3", net)));
-            net.getTransition("t33").addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from("0.2*P3", net)));
-            net.getTransition("t34").addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from("0.1*P3", net)));
-            net.getTransition("t4").addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from("4*Ph4", net)));
-            /*
-            for(int i = 1; i<= numPh; i++){
-                net.getTransition("t"+i).addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from(i+"*Ph"+i, net)));
-                for(int j = 1; j<=numPlaces; ) {
-                    if(i == 1)
-                        net.getTransition("t" + i + j).addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from(fireRates[i - 1] + "*P"+i, net)));
-                    if(i ==2)
-                        net.getTransition("t" + i + j).addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from(fireRates[i - 1] + "*P"+i, net)));
-                }
-            }
-          */
-            return net;
+    public static void setSteadyStateTransition(PetriNet net, Map<RewardRate, BigDecimal> steadyState, int numPlaces, int numPh){
+        Place InitialPlace = net.addPlace("InitialPlace");
+
+        for(RewardRate reward : steadyState.keySet()){
+
+        }
+        for(int i = 0; i< numPh; i++){
+            net.addTransition("sph" + i);
+            net.addPrecondition(net.getPlace("InitialPlace"), net.getTransition("sph"+i));
+            net.addPostcondition(net.getTransition("sph"+i), net.getPlace("Ph"+i));
+        }
+        net.addTransition("sp");
+        net.addPrecondition(net.getPlace("InitialPlace"), net.getTransition("sp"));
+        net.addPostcondition(net.getTransition("sp"), net.getPlace("Pool"));
+
+
+        //net.addTransition("InitialPlace");
+        net.getTransition("Prova").addFeature(StochasticTransitionFeature.newDeterministicInstance(new BigDecimal("1"), MarkingExpr.from("1*InitialPlace", net)));
     }
-    public static String getPerformabilityReward() {
+
+
+
+    public static String getPerformabilityRewards() {
         return "If(Pool==6,1,0);If(Pool==7,1,0)";
     }
-    public static PetriNet build2(Marking marking) {
+
+    public static String getUnavailabilityRewards(){
+        return "Pool;Ph1;Ph2;Ph3;Ph4";
+    }
+
+    public static List<Builder> getPerformabilityRewardMap() {
+        String reward = getPerformabilityRewards();
+        List<Builder> performabilityRewardMap = new ArrayList<>();
+
+        String[] conditions = reward.split(";");
+
+        // Elaborare ogni condizione
+        for (String condition : conditions) {
+            // Rimuovere "If(" e ");"
+            condition = condition.replace("If(", "").replace(");", "");
+
+            // Dividere la condizione dalla virgola
+            String[] parts = condition.split(",");
+
+            // Estrarre la condizione
+            String[] conditionParts = parts[0].split("==");
+            String varName = conditionParts[0].trim(); // Nome della variabile
+            int varValue = Integer.parseInt(conditionParts[1].trim()); // Valore della variabile
+
+            // Aggiungere alla mappa
+            //performabilityRewardMap.add(new Builder(varName, varValue));
+        }
+
+        System.out.println("Mappa delle variabili: " + performabilityRewardMap);
+
+        return performabilityRewardMap;
+    }
+
+    public static List<String> getAvailabilityRewardMap() {
+        String reward = getUnavailabilityRewards();
+        List<String> availabilityRewardMap = new ArrayList<>();
+
+        String[] conditions = reward.split(";");
+
+        // Elaborare ogni condizione
+        for (String condition : conditions) {
+
+            availabilityRewardMap.add(condition);
+        }
+        System.out.println("Mappa delle variabili: " + availabilityRewardMap);
+
+        return availabilityRewardMap;
+    }
+   /* public static PetriNet build2(Marking marking) {
         PetriNet net = new PetriNet();
         int[] arrivalRate = {2,1,3};
         int poolSize = 8;
@@ -230,7 +216,7 @@ public class parallelServerBernsteinPh {
         t34.addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from("0.1*P3", net)));
         t4.addFeature(StochasticTransitionFeature.newExponentialInstance(new BigDecimal("1"), MarkingExpr.from("4*Ph4", net)));
    return net;
-    }
+    }*/
 
     //funzione per cambiare marcatura su Pool
     public static void changePoolsize(PetriNet net, Marking marking, int poolSize) {
@@ -252,7 +238,101 @@ public class parallelServerBernsteinPh {
         }
     }
 
+    public static void saveResults(String filePath, Map<RewardRate, BigDecimal> steadyState, int value){
+        //TODO: Sistema con nuovo metodo.
 
+        String pRewards = getPerformabilityRewards();
+        BigDecimal b = new BigDecimal(0);
+        String[] conditions = pRewards.split(";");
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, false))) {
+           for(RewardRate reward : steadyState.keySet()){
+               writer.write(reward.toString() + " : " + steadyState.get(reward) + " " +value);
+               writer.newLine();
+               BigDecimal bigDecimal = steadyState.get(reward);
+               b = b.add(bigDecimal);
+           }
+            writer.newLine();
+            writer.write(b.toString());
+           writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+    public static void saveTransientResults(String filePath, TransientSolution<Marking, RewardRate> rewards, int value) {
+        List<RewardRate> rewardsList = rewards.getColumnStates();
+        double step = 0.1;
+        double [][][] solutions = rewards.getSolution();
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, false))) {
+            writer.write("Time ");
+            for(RewardRate reward : rewardsList){
+                writer.write(reward.toString() + " ");
+            }
+            writer.newLine();
+            for(int i= 0; i < solutions.length; i++){
+                writer.write(step+ " ");
+                step+=step;
+                for(int j = 0; j < solutions[i][0].length; j++){
+                    writer.write(solutions[i][0][j] + " ");
+
+                }
+                writer.newLine();
+            }
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
+    }
+
+    public static List<RewardRate>getUnavailabilityRewardsList(){
+        List<RewardRate> unavailabilityRewards = new ArrayList<>();
+        String rewards = getUnavailabilityRewards();
+        String[] conditions = rewards.split(";");
+        for(int i = 0; i < conditions.length; i++){
+            unavailabilityRewards.add(RewardRate.fromString(conditions[i]));
+        }
+        return unavailabilityRewards;
+    }
+
+
+    public static SteadyStateSolution<RewardRate> calculateGSPNSteadyState(PetriNet pn, Marking marking, int poolSize, String filePath){
+        Map<Marking, Double> steadyStateMap = GSPNSteadyState.builder().build().compute(pn, marking);
+        Map<Marking, BigDecimal> convertedSteadyStateMap = new HashMap<>();
+
+        //lista per unavailability rewards
+        List<RewardRate>unavailability = getUnavailabilityRewardsList();
+
+
+        for (Map.Entry<Marking, Double> entry : steadyStateMap.entrySet()) {
+            convertedSteadyStateMap.put(entry.getKey(), BigDecimal.valueOf(entry.getValue()));
+        }
+        SteadyStateSolution<Marking> solution = new SteadyStateSolution<>(convertedSteadyStateMap);
+
+        SteadyStateSolution<RewardRate> rewards = SteadyStateSolution.computeRewards(solution, unavailability.toArray(new RewardRate[0]));
+        Map<RewardRate, BigDecimal> steadyState = rewards.getSteadyState();
+        saveResults(filePath, steadyState, poolSize);
+        return rewards;
+    }
+
+
+    public static void calculateGSPNTransientAnalysis(PetriNet pn, Marking marking, int poolSize, String filePath){//, SteadyStateSolution<Marking> solution) {
+        double step = 0.1;
+        List<RewardRate>unavailability = getUnavailabilityRewardsList();
+        Pair<Map<Marking, Integer>, double[][]> result = GSPNTransient.builder()
+                .timePoints(0.0, 10.0, step)
+                .build().compute(pn, marking);
+        Map<Marking, Integer> statePos = result.first();
+        double[][] probs = result.second();
+        //changeArrivals(pn, marking,1, 6);
+        //changeArrivals(pn, marking,2, 7);
+        TransientSolution<Marking, Marking> transientSolution = TransientSolution.fromArray(probs,step,statePos,marking);
+        TransientSolution<Marking, RewardRate> rewards = TransientSolution.computeRewards(true, transientSolution, unavailability.toArray(new RewardRate[0]));
+        rewards.getSolution();
+        int value = 1;
+        saveTransientResults( filePath, rewards, value);
+    }
     public static void main(String[] args) {
 
         //PetriNet pn = new PetriNet();
@@ -261,46 +341,78 @@ public class parallelServerBernsteinPh {
         int numPh = 4;
         int[] arrivalRates =  {2,1,3};
         int poolSize = 8;
-        String filePath = System.getProperty("user.dir") + "/results.txt";
+        int numTest =  1;
+        String filePathA = System.getProperty("user.dir") + "/SteadyStateResults.txt";
+        String filePathP = System.getProperty("user.dir") + "/TransientResults2.txt";
         System.out.println("Working Directory = " + System.getProperty("user.dir"));
 
-        PetriNet pn = build(marking, numPlaces, numPh, arrivalRates, poolSize);
+        Builder builder = new Builder(marking, numPlaces, numPh, arrivalRates, poolSize);
+        PetriNet pn = builder.build();
+        //PetriNet pn = build(marking, numPlaces, numPh, arrivalRates, poolSize);
 
         ///STEADY STATE
-        Map<Marking, Double> dist = GSPNSteadyState.builder().build().compute(pn, marking);
-
-
-        System.out.printf("%s", marking);
-        float totP = 0;
-        for (Marking m : dist.keySet()) {
-            if (m.getTokens("Pool") == 2)
-                totP += dist.get(m);
-            System.out.printf("%f %s%n", dist.get(m), m);
+        SteadyStateSolution<RewardRate> rewards = new SteadyStateSolution<>();
+        for(int i = 0; i < numTest; i++){
+            changePoolsize(pn, marking, 8);
+            rewards = calculateGSPNSteadyState(pn, marking, i, filePathA);
         }
+        //Map<Marking, Double> steadyStateMap = GSPNSteadyState.builder().build().compute(pn, marking);
+        //Map<Marking, BigDecimal> convertedSteadyStateMap = new HashMap<>();
 
+        //lista per unavailability rewards
+        List<RewardRate>unavailability = getUnavailabilityRewardsList();
 
-        RegSteadyState analysis = RegSteadyState.builder().build();
-
-        //GSPNSteadyState analysis = GSPNSteadyState.builder().build();
-        SteadyStateSolution<Marking> result;
-
-        SteadyStateSolution<RewardRate> resultReward;
-
-        String rewards = getPerformabilityReward();
-        Map<RewardRate, BigDecimal> steadyState;
-
-        int p = 7;
-        for(int i = 0; i<= 3; i++) {
-            //dist = GSPNSteadyState.builder().build().compute(pn, marking).keySet().stream().filter();
-            result = analysis.compute(pn, marking);
-            resultReward = SteadyStateSolution.computeRewards(result, rewards);
-            steadyState = resultReward.getSteadyState();
-            BigDecimal reliability = steadyState.entrySet().stream().filter(t -> t.getKey().toString().equals(rewards)).findFirst().get().getValue();
-            addRow(filePath, reliability);
-            System.out.printf("%d", reliability);
-            changePoolsize(pn, marking, p);
-            p--;
+        /*
+        for (Map.Entry<Marking, Double> entry : steadyStateMap.entrySet()) {
+            convertedSteadyStateMap.put(entry.getKey(), BigDecimal.valueOf(entry.getValue()));
         }
+        SteadyStateSolution<Marking> solution = new SteadyStateSolution<>(convertedSteadyStateMap);
+        Map<Marking, BigDecimal> sol = solution.getSteadyState();
+        BigDecimal max = new BigDecimal(0);
+        Marking sMarking = new Marking();
+        for(Marking entry : sol.keySet()){
+            if(sol.get(entry).compareTo(max) == 1)
+            {
+                max = sol.get(entry);
+                sMarking = entry;
+            }
+        }
+        System.out.printf("max m: " + sMarking + " val: %n"+ max);
+        double step = 0.1;
+        changePoolsize(pn,marking,6);
+
+         */
+
+
+
+        //Calcolato Steady State re-buildo la net a steady state
+        pn = builder.setSteadyStateTransition(pn, rewards.getSteadyState(), numPh, marking);
+
+
+        System.out.printf(marking.toString() + "\n");
+
+        //rewards = calculateGSPNSteadyState(pn, marking, 8, filePathA);
+        calculateGSPNTransientAnalysis(pn,marking, poolSize,filePathP);
+        /*Pair<Map<Marking, Integer>, double[][]> result = GSPNTransient.builder()
+                .timePoints(0.0, 10.0, step)
+                .build().compute(pn, sMarking);
+        Map<Marking, Integer> statePos = result.first();
+        double[][] probs = result.second();
+        TransientSolution<Marking, Double> transientResults = new TransientSolution<>(10,step, probs, statePos, probs);
+
+
+        int markingPos = statePos.get(marking);
+        for (int t = 0; t < probs.length; t++) {
+            double time = t * step;
+            System.out.printf("%.1f %.6f %n", time, probs[t][markingPos]);
+        }
+        */
+
+    }
+}
+
+        /*
+
 
         /* Da guardare
         RegTransient analysis = RegTransient.builder()
@@ -318,43 +430,8 @@ public class parallelServerBernsteinPh {
         //System.out.printf("%s", resultReward.toString());
         //System.out.printf("%n%.6f", resultReward.getSteadyState());
 
-        /*dist = resultReward.getSteadyState();
-        for(int t = 0; t < resultReward.getSteadyState().size(); t++){
-            for(int i = 0; i<  resultReward.getSteadyState().size(); i++){
-                System.out.printf("%.1f %.6f %n", resultReward.getSteadyState()[t][markingPos]);
-        }*/
 
         //SteadyStateSolution.computeRewards()
-/*
-        //Riduzione PoolSize 8-->4
-        System.out.printf("Pool = 2: %f", totP);
-
-
-        marking.setTokens(pn.getPlace("Pool"), 4);
-        dist = GSPNSteadyState.builder().build().compute(pn, marking);
-        System.out.printf("%nnuova Marcatura Pool: 4 --> %s%n", marking);
-        totP = 0;
-        for (Marking m : dist.keySet()) {
-            if (m.getTokens("Pool") == 2)
-                totP += dist.get(m);
-        }
-        System.out.printf("Pool = 2: %f", totP);
-
-        //Esempio di Picco tasso di arrivo
-        // P1: 2->4
-        marking.setTokens(pn.getPlace("P1"), 4);
-        //P2: 1 ->3
-        marking.setTokens(pn.getPlace("P2"), 3);
-        dist = GSPNSteadyState.builder().build().compute(pn, marking);
-        System.out.printf("%nNuova Marcatura Pool: 4 --> %s%n", marking);
-        totP = 0;
-        for (Marking m : dist.keySet()) {
-            if (m.getTokens("Pool") == 2)
-                totP += dist.get(m);
-        }
-        System.out.printf("Pool = 2: %f", totP);
-
-*/
         //GSPN Transient Analysis
 
 /*
@@ -379,8 +456,7 @@ public class parallelServerBernsteinPh {
 
             }
         }*/
-    }
-    }
+
 
 
 /*
@@ -429,12 +505,6 @@ addRow(filePath, waitTrigger, reliability, availability, performability);
         trigger.removeFeature(StochasticTransitionFeature.class);
         trigger.addFeature(StochasticTransitionFeature.newDeterministicInstance(new BigDecimal(triggerValue), MarkingExpr.from("1", net)));
     }
-
-    @Override
-    public void changePoolsize(PetriNet net, Marking marking, int poolSize) {
-        Place ok = net.getPlace("Ok");
-        marking.setTokern
-
 
 
  */
